@@ -1,49 +1,54 @@
+import { AlertTriangle, XCircle, AlertCircle } from "lucide-react";
 import { getExpiringWithin30Days, getExpired, getLowStock } from "@/lib/medicine-store";
 import { useMedicines } from "@/hooks/use-medicines";
 
 const AlertsPanel = () => {
-  const { medicines } = useMedicines();
+  useMedicines(); // subscribe to changes
   const expiring = getExpiringWithin30Days();
   const expired = getExpired();
   const lowStock = getLowStock();
 
   if (expiring.length === 0 && expired.length === 0 && lowStock.length === 0) {
-    return (
-      <div className="mb-4 text-success text-sm">
-        [✓] All inventory levels normal. No alerts.
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="mb-4 bg-console border border-console rounded p-3 text-sm space-y-2">
-      <p className="text-primary font-bold">--- SYSTEM ALERTS ---</p>
+    <div className="grid gap-3 md:grid-cols-3 mb-6">
       {expired.length > 0 && (
-        <div>
-          <p className="text-danger font-bold">[!] EXPIRED MEDICINES ({expired.length}):</p>
+        <div className="bg-danger-soft border border-danger-soft rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <XCircle className="w-5 h-5 text-destructive" />
+            <h3 className="font-semibold text-destructive">Expired ({expired.length})</h3>
+          </div>
           {expired.map((m) => (
-            <p key={m.id} className="text-danger ml-4">
-              • {m.name} (Expired: {m.expiryDate})
+            <p key={m.id} className="text-sm text-destructive/80 ml-7">
+              {m.name} — {m.expiryDate}
             </p>
           ))}
         </div>
       )}
       {expiring.length > 0 && (
-        <div>
-          <p className="text-warning font-bold">[⚠] EXPIRING WITHIN 30 DAYS ({expiring.length}):</p>
+        <div className="bg-warning-soft border border-warning-soft rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-5 h-5 text-warning" />
+            <h3 className="font-semibold text-warning">Expiring Soon ({expiring.length})</h3>
+          </div>
           {expiring.map((m) => (
-            <p key={m.id} className="text-warning ml-4">
-              • {m.name} (Expires: {m.expiryDate})
+            <p key={m.id} className="text-sm text-warning/80 ml-7">
+              {m.name} — {m.expiryDate}
             </p>
           ))}
         </div>
       )}
       {lowStock.length > 0 && (
-        <div>
-          <p className="text-danger font-bold">[⚠] LOW STOCK ({lowStock.length}):</p>
+        <div className="bg-danger-soft border border-danger-soft rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertCircle className="w-5 h-5 text-destructive" />
+            <h3 className="font-semibold text-destructive">Low Stock ({lowStock.length})</h3>
+          </div>
           {lowStock.map((m) => (
-            <p key={m.id} className="text-danger ml-4">
-              • {m.name} (Qty: {m.quantity})
+            <p key={m.id} className="text-sm text-destructive/80 ml-7">
+              {m.name} — Qty: {m.quantity}
             </p>
           ))}
         </div>
