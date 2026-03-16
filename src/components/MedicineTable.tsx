@@ -1,48 +1,71 @@
 import type { Medicine } from "@/lib/medicine-store";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 interface MedicineTableProps {
   medicines: Medicine[];
   title?: string;
+  compact?: boolean;
 }
 
-const MedicineTable = ({ medicines, title }: MedicineTableProps) => {
+const MedicineTable = ({ medicines, title, compact }: MedicineTableProps) => {
   const now = new Date();
   const thirtyDays = new Date();
   thirtyDays.setDate(thirtyDays.getDate() + 30);
 
-  const getRowClass = (m: Medicine) => {
+  const getStatusBadge = (m: Medicine) => {
     const exp = new Date(m.expiryDate);
-    if (exp < now) return "text-danger";
-    if (exp <= thirtyDays) return "text-warning";
-    if (m.quantity < 10) return "text-danger";
-    return "text-foreground";
+    if (exp < now) return <Badge variant="destructive">Expired</Badge>;
+    if (exp <= thirtyDays) return <Badge className="bg-warning text-warning-foreground">Expiring</Badge>;
+    if (m.quantity < 10) return <Badge variant="destructive">Low Stock</Badge>;
+    return <Badge className="bg-success-soft text-success border border-success-soft">OK</Badge>;
   };
 
   return (
-    <div className="text-sm">
-      {title && <p className="text-primary font-bold mb-2">{title}</p>}
-      <div className="overflow-x-auto">
-        <pre className="text-muted-foreground">
-{`┌──────┬──────────────────────────┬───────┬──────────┬────────────┐
-│  ID  │ NAME                     │  QTY  │  PRICE   │  EXPIRY    │
-├──────┼──────────────────────────┼───────┼──────────┼────────────┤`}
-        </pre>
-        {medicines.length === 0 ? (
-          <pre className="text-muted-foreground">
-{`│      │  No records found.       │       │          │            │`}
-          </pre>
-        ) : (
-          medicines.map((m) => (
-            <pre key={m.id} className={getRowClass(m)}>
-{`│ ${String(m.id).padStart(4)} │ ${m.name.padEnd(24).slice(0, 24)} │ ${String(m.quantity).padStart(5)} │ $${m.price.toFixed(2).padStart(7)} │ ${m.expiryDate} │`}
-            </pre>
-          ))
-        )}
-        <pre className="text-muted-foreground">
-{`└──────┴──────────────────────────┴───────┴──────────┴────────────┘`}
-        </pre>
+    <div>
+      {title && <h3 className="font-semibold text-foreground mb-3">{title}</h3>}
+      <div className="rounded-lg border bg-card overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead className="w-16">ID</TableHead>
+              <TableHead>Medicine Name</TableHead>
+              {!compact && <TableHead className="text-right">Qty</TableHead>}
+              <TableHead className="text-right">Price</TableHead>
+              <TableHead>Expiry</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {medicines.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={compact ? 5 : 6} className="text-center text-muted-foreground py-8">
+                  No medicines found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              medicines.map((m) => (
+                <TableRow key={m.id}>
+                  <TableCell className="font-medium">{m.id}</TableCell>
+                  <TableCell>{m.name}</TableCell>
+                  {!compact && <TableCell className="text-right">{m.quantity}</TableCell>}
+                  <TableCell className="text-right">${m.price.toFixed(2)}</TableCell>
+                  <TableCell>{m.expiryDate}</TableCell>
+                  <TableCell>{getStatusBadge(m)}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
-      <p className="text-muted-foreground mt-1">Total records: {medicines.length}</p>
+      <p className="text-xs text-muted-foreground mt-2">{medicines.length} record(s)</p>
     </div>
   );
 };
