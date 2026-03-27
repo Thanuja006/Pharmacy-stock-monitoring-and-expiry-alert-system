@@ -1,20 +1,23 @@
 // === BILLING MODULE COMPONENT ===
-// Supports multi-item billing, expiry checks, and formatted bill display
+// Supports multi-item billing with dropdown selection, expiry checks, and formatted bill display
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, ShoppingCart, AlertTriangle, Printer } from "lucide-react";
+import { Plus, Trash2, ShoppingCart, AlertTriangle, Printer, Receipt, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
   getMedicineById, checkExpiryStatus, processBill,
-  type Medicine, type Bill,
+  type Bill,
 } from "@/lib/medicine-store";
 import { useMedicines } from "@/hooks/use-medicines";
 
@@ -35,6 +38,9 @@ const BillingModule = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [generatedBill, setGeneratedBill] = useState<Bill | null>(null);
 
+  // --- Currently selected medicine preview ---
+  const selectedMed = selectedId ? getMedicineById(parseInt(selectedId)) : null;
+
   // --- Add medicine to cart with expiry validation ---
   const handleAddToCart = () => {
     if (!selectedId || !selectedQty) {
@@ -46,7 +52,7 @@ const BillingModule = () => {
     const qty = parseInt(selectedQty);
     const med = getMedicineById(id);
 
-    if (!med) { toast.error(`Medicine ID ${id} not found`); return; }
+    if (!med) { toast.error("Medicine not found"); return; }
     if (qty <= 0) { toast.error("Quantity must be greater than 0"); return; }
 
     // Expiry check during billing
@@ -112,15 +118,26 @@ const BillingModule = () => {
   // --- Print bill ---
   const handlePrint = () => window.print();
 
+  // Filter out expired medicines from dropdown
+  const availableMedicines = medicines.filter((m) => {
+    const exp = new Date(m.expiryDate);
+    return exp >= new Date() && m.quantity > 0;
+  });
+
   return (
     <div className="space-y-6">
-      {/* --- Bill Generation Form --- */}
+      {/* === Billing Form + Live Summary Side-by-Side === */}
       <div className="grid lg:grid-cols-5 gap-6">
+
+        {/* --- Left: Medicine selection --- */}
         <div className="lg:col-span-3 space-y-4">
-          {/* Customer Name */}
-          <Card>
+
+          {/* Customer Name Card */}
+          <Card className="shadow-md border-border/60">
             <CardContent className="pt-5 pb-4">
-              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer Name</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5" /> Customer Name
+              </Label>
               <Input
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
@@ -130,140 +147,150 @@ const BillingModule = () => {
             </CardContent>
           </Card>
 
-          {/* Add medicine to cart */}
-          <Card>
+          {/* Add Medicine Card — DROPDOWN instead of manual ID */}
+          <Card className="shadow-md border-border/60">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Add Medicine to Bill</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Plus className="w-4 h-4 text-primary" /> Add Medicine to Bill
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <Label className="text-xs">Medicine ID</Label>
-                  <Input type="number" value={selectedId} onChange={(e) => setSelectedId(e.target.value)} placeholder="ID" />
+                {/* === DROPDOWN SELECTION (replaces manual ID input) === */}
+                <div className="col-span-2">
+                  <Label className="text-xs">Select Medicine</Label>
+                  <Select value={selectedId} onValueChange={setSelectedId}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Choose medicine..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableMedicines.map((m) => (
+                        <SelectItem key={m.id} value={String(m.id)}>
+                          {m.name} — ${m.price.toFixed(2)} (Stock: {m.quantity})
+                        </SelectItem>
+                      ))}
+                      {availableMedicines.length === 0 && (
+                        <div className="px-3 py-2 text-xs text-muted-foreground">No medicines available</div>
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label className="text-xs">Quantity</Label>
-                  <Input type="number" value={selectedQty} onChange={(e) => setSelectedQty(e.target.value)} placeholder="Qty" />
-                </div>
-                <div className="flex items-end">
-                  <Button onClick={handleAddToCart} className="w-full">
-                    <Plus className="w-4 h-4 mr-1" /> Add
-                  </Button>
+                  <Input
+                    type="number"
+                    value={selectedQty}
+                    onChange={(e) => setSelectedQty(e.target.value)}
+                    placeholder="Qty"
+                    className="mt-1"
+                    min={1}
+                    max={selectedMed?.quantity}
+                  />
                 </div>
               </div>
 
-              {/* Auto-fetch preview */}
-              {selectedId && getMedicineById(parseInt(selectedId)) && (
-                <div className="text-xs bg-muted/50 rounded-md p-2.5 space-y-0.5">
-                  <p><span className="text-muted-foreground">Name:</span> <strong>{getMedicineById(parseInt(selectedId))!.name}</strong></p>
-                  <p><span className="text-muted-foreground">Price:</span> ${getMedicineById(parseInt(selectedId))!.price.toFixed(2)}</p>
-                  <p><span className="text-muted-foreground">In Stock:</span> {getMedicineById(parseInt(selectedId))!.quantity}</p>
+              {/* Auto-fetched medicine preview */}
+              {selectedMed && (
+                <div className="text-xs rounded-lg p-3 space-y-1 bg-primary/5 border border-primary/10">
+                  <p><span className="text-muted-foreground">Name:</span> <strong>{selectedMed.name}</strong></p>
+                  <p><span className="text-muted-foreground">Unit Price:</span> <strong className="text-primary">${selectedMed.price.toFixed(2)}</strong></p>
+                  <p><span className="text-muted-foreground">In Stock:</span> <strong>{selectedMed.quantity}</strong></p>
+                  <p><span className="text-muted-foreground">Expiry:</span> <strong>{selectedMed.expiryDate}</strong></p>
+                  {selectedQty && parseInt(selectedQty) > 0 && (
+                    <p className="pt-1 border-t border-primary/10 font-semibold">
+                      Subtotal: <span className="text-primary">${(selectedMed.price * parseInt(selectedQty)).toFixed(2)}</span>
+                    </p>
+                  )}
                 </div>
               )}
+
+              <Button onClick={handleAddToCart} className="w-full" size="lg">
+                <Plus className="w-4 h-4 mr-2" /> Add to Bill
+              </Button>
             </CardContent>
           </Card>
-
-          {/* Cart Table */}
-          {cart.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <ShoppingCart className="w-4 h-4" /> Cart ({cart.length} items)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead>Medicine</TableHead>
-                      <TableHead className="text-right">Price</TableHead>
-                      <TableHead className="text-right">Qty</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead className="w-10"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {cart.map((item, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell>
-                          {item.medicineName}
-                          {item.warning && (
-                            <div className="flex items-center gap-1 mt-0.5">
-                              <AlertTriangle className="w-3 h-3 text-warning" />
-                              <span className="text-[10px] text-warning">Near expiry</span>
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">${item.unitPrice.toFixed(2)}</TableCell>
-                        <TableCell className="text-right">{item.quantity}</TableCell>
-                        <TableCell className="text-right font-medium">${item.total.toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeFromCart(idx)}>
-                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    <TableRow className="bg-muted/30 font-semibold">
-                      <TableCell colSpan={3} className="text-right">Grand Total</TableCell>
-                      <TableCell className="text-right">${grandTotal.toFixed(2)}</TableCell>
-                      <TableCell />
-                    </TableRow>
-                  </TableBody>
-                </Table>
-                <Button onClick={handleGenerateBill} className="w-full mt-4" size="lg">
-                  <ShoppingCart className="w-4 h-4 mr-2" /> Generate Bill
-                </Button>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
-        {/* Available Stock sidebar */}
+        {/* --- Right: LIVE BILL SUMMARY (always visible) --- */}
         <div className="lg:col-span-2">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Available Stock</CardTitle>
+          <Card className="shadow-lg border-2 border-primary/15 sticky top-24">
+            <CardHeader className="pb-3 bg-primary/5 rounded-t-[var(--radius)]">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-primary" /> Live Bill Summary
+              </CardTitle>
+              {customerName && (
+                <p className="text-xs text-muted-foreground">Customer: <strong className="text-foreground">{customerName}</strong></p>
+              )}
             </CardHeader>
             <CardContent className="p-0">
-              <div className="max-h-[420px] overflow-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="w-12">ID</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead className="text-right">Qty</TableHead>
-                      <TableHead className="text-right">Price</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {medicines.map((m) => {
-                      const exp = new Date(m.expiryDate);
-                      const isExpired = exp < new Date();
-                      return (
-                        <TableRow key={m.id} className={isExpired ? "opacity-50" : ""}>
-                          <TableCell className="font-medium">{m.id}</TableCell>
-                          <TableCell className="text-xs">
-                            {m.name}
-                            {isExpired && <Badge variant="destructive" className="ml-1 text-[9px] px-1 py-0">EXP</Badge>}
-                          </TableCell>
-                          <TableCell className="text-right">{m.quantity}</TableCell>
-                          <TableCell className="text-right">${m.price.toFixed(2)}</TableCell>
+              {cart.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  <ShoppingCart className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No items added yet</p>
+                  <p className="text-xs mt-1">Select a medicine and add it to the bill</p>
+                </div>
+              ) : (
+                <>
+                  <div className="max-h-[320px] overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-primary/5">
+                          <TableHead className="text-xs">Medicine</TableHead>
+                          <TableHead className="text-right text-xs">Qty</TableHead>
+                          <TableHead className="text-right text-xs">Total</TableHead>
+                          <TableHead className="w-8"></TableHead>
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+                      </TableHeader>
+                      <TableBody>
+                        {cart.map((item, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="text-xs">
+                              <span className="font-medium">{item.medicineName}</span>
+                              <span className="text-muted-foreground block text-[10px]">${item.unitPrice.toFixed(2)} each</span>
+                              {item.warning && (
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <AlertTriangle className="w-3 h-3 text-warning" />
+                                  <span className="text-[10px] text-warning">Near expiry</span>
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right text-xs">{item.quantity}</TableCell>
+                            <TableCell className="text-right text-xs font-semibold">${item.total.toFixed(2)}</TableCell>
+                            <TableCell>
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeFromCart(idx)}>
+                                <Trash2 className="w-3 h-3 text-destructive" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Grand Total */}
+                  <div className="border-t-2 border-primary/20 p-4 bg-primary/5">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-xs text-muted-foreground">{cart.length} item(s)</p>
+                        <p className="text-sm font-bold text-foreground">Grand Total</p>
+                      </div>
+                      <p className="text-2xl font-bold text-primary">${grandTotal.toFixed(2)}</p>
+                    </div>
+                    <Button onClick={handleGenerateBill} className="w-full mt-3" size="lg">
+                      <ShoppingCart className="w-4 h-4 mr-2" /> Generate Bill
+                    </Button>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* --- Generated Bill Display --- */}
+      {/* === Generated Bill Display (Invoice) === */}
       {generatedBill && (
-        <Card className="border-2 border-primary/20 print:border-black" id="printable-bill">
-          <CardHeader className="text-center border-b pb-4">
+        <Card className="border-2 border-primary/20 shadow-xl print:border-black print:shadow-none" id="printable-bill">
+          <CardHeader className="text-center border-b pb-4 bg-primary/5 rounded-t-[var(--radius)]">
             <p className="text-xs text-muted-foreground uppercase tracking-widest">💊 Pharmacy Billing System</p>
             <CardTitle className="text-xl">Invoice</CardTitle>
             <div className="flex justify-between text-xs text-muted-foreground mt-2">
@@ -275,7 +302,7 @@ const BillingModule = () => {
           <CardContent className="pt-4">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/50">
+                <TableRow className="bg-primary/5">
                   <TableHead>#</TableHead>
                   <TableHead>Medicine</TableHead>
                   <TableHead className="text-right">Unit Price</TableHead>
