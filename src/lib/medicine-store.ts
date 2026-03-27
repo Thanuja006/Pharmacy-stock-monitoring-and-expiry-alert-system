@@ -93,3 +93,83 @@ export function sellMedicine(id: number, qty: number): { success: boolean; total
   notify();
   return { success: true, total };
 }
+
+// === BILL GENERATION MODULE ===
+
+export interface BillItem {
+  medicineId: number;
+  medicineName: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+export interface Bill {
+  billNumber: number;
+  date: string;
+  customerName: string;
+  items: BillItem[];
+  grandTotal: number;
+}
+
+let nextBillNumber = 1;
+let bills: Bill[] = [];
+
+/** Check medicine expiry status before billing */
+export function checkExpiryStatus(id: number): { status: "ok" | "expired" | "near-expiry"; message?: string } {
+  const med = medicines.find((m) => m.id === id);
+  if (!med) return { status: "ok" };
+  const exp = new Date(med.expiryDate);
+  const now = new Date();
+  const sevenDays = new Date();
+  sevenDays.setDate(now.getDate() + 7);
+
+  if (exp < now) return { status: "expired", message: `"${med.name}" is EXPIRED (${med.expiryDate}). Cannot bill.` };
+  if (exp <= sevenDays) return { status: "near-expiry", message: `"${med.name}" expires on ${med.expiryDate} (within 7 days).` };
+  return { status: "ok" };
+}
+
+/** Process a full bill with multiple items */
+export function processBill(customerName: string, items: { id: number; qty: number }[]): { success: boolean; bill?: Bill; error?: string } {
+  // Validate all items first
+  for (const item of items) {
+    const med = medicines.find((m) => m.id === item.id);
+    if (!med) return { success: false, error: `Medicine ID ${item.id} not found` };
+    const expiry = checkExpiryStatus(item.id);
+    if (expiry.status === "expired") return { success: false, error: expiry.message };
+    if (med.quantity < item.qty) return { success: false, error: `Insufficient stock for "${med.name}" (available: ${med.quantity})` };
+  }
+
+  // Deduct stock and build bill items
+  const billItems: BillItem[] = items.map((item) => {
+    const med = medicines.find((m) => m.id === item.id)!;
+    med.quantity -= item.qty;
+    return {
+      medicineId: med.id,
+      medicineName: med.name,
+      quantity: item.qty,
+      unitPrice: med.price,
+      total: item.qty * med.price,
+    };
+  });
+
+  const bill: Bill = {
+    billNumber: nextBillNumber++,
+    date: new Date().toLocaleString(),
+    customerName,
+    items: billItems,
+    grandTotal: billItems.reduce((sum, i) => sum + i.total, 0),
+  };
+
+  bills.push(bill);
+  notify();
+  return { success: true, bill };
+}
+
+export function getBills(): Bill[] {
+  return [...bills];
+}
+
+export function getMedicineById(id: number): Medicine | undefined {
+  return medicines.find((m) => m.id === id);
+}

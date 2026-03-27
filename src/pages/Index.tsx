@@ -6,13 +6,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import AlertsPanel from "@/components/AlertsPanel";
 import MedicineTable from "@/components/MedicineTable";
+import BillingModule from "@/components/BillingModule";
 import { useMedicines } from "@/hooks/use-medicines";
 import {
   addMedicine, updateQuantity, deleteMedicine, searchByName,
-  getExpiringWithin30Days, getLowStock, sellMedicine, type Medicine,
+  getExpiringWithin30Days, getLowStock, type Medicine,
 } from "@/lib/medicine-store";
 
 type Screen = "menu" | "add" | "viewAll" | "update" | "delete" | "search" | "expiring" | "lowStock" | "billing";
@@ -25,7 +26,7 @@ const menuItems = [
   { key: "search", label: "Search", icon: Search, desc: "Search medicines by name" },
   { key: "expiring", label: "Expiry Tracking", icon: Clock, desc: "Medicines expiring in 30 days" },
   { key: "lowStock", label: "Low Stock", icon: AlertCircle, desc: "Quantity below 10" },
-  { key: "billing", label: "Billing", icon: ShoppingCart, desc: "Sell medicine & generate bill" },
+  { key: "billing", label: "Billing", icon: ShoppingCart, desc: "Multi-item bill generation" },
 ] as const;
 
 const Index = () => {
@@ -42,8 +43,6 @@ const Index = () => {
   const [deleteId, setDeleteId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Medicine[]>([]);
-  const [billId, setBillId] = useState("");
-  const [billQty, setBillQty] = useState("");
 
   const goMenu = () => setScreen("menu");
 
@@ -73,153 +72,163 @@ const Index = () => {
     setSearchResults(searchByName(searchQuery));
   };
 
-  const handleBill = () => {
-    if (!billId || !billQty) { toast.error("Medicine ID and quantity required"); return; }
-    const r = sellMedicine(parseInt(billId), parseInt(billQty));
-    r.success ? toast.success(`Sale complete! Total: $${r.total!.toFixed(2)}`) : toast.error(r.error!);
-    setBillId(""); setBillQty("");
-  };
-
   const BackButton = () => (
-    <Button variant="outline" size="sm" onClick={goMenu} className="mb-4">
-      <ArrowLeft className="w-4 h-4 mr-1" /> Back to Menu
+    <Button variant="outline" size="sm" onClick={goMenu} className="mb-5 shadow-sm">
+      <ArrowLeft className="w-4 h-4 mr-1" /> Back to Dashboard
     </Button>
   );
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card px-6 py-4">
+    <div className="min-h-screen">
+      {/* === HEADER === */}
+      <header className="border-b bg-card/80 backdrop-blur-sm px-6 py-4 shadow-sm sticky top-0 z-10">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-foreground">💊 Medical Inventory System</h1>
-            <p className="text-sm text-muted-foreground">Student Prototype — Inventory & Expiry Tracking</p>
+            <h1 className="text-xl font-bold text-foreground tracking-tight">💊 Pharmacy Inventory System</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">Medicine Inventory &amp; Expiry Tracking</p>
           </div>
-          <p className="text-xs text-muted-foreground hidden md:block">{new Date().toLocaleDateString()}</p>
+          <div className="text-right hidden md:block">
+            <p className="text-xs text-muted-foreground">{new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
+            <p className="text-[10px] text-muted-foreground/60 mt-0.5">Student Prototype Project</p>
+          </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto p-6">
+
+        {/* === DASHBOARD MENU === */}
         {screen === "menu" && (
           <>
             <AlertsPanel />
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-8">
               {menuItems.map((item) => (
                 <Card
                   key={item.key}
-                  className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all"
+                  className="cursor-pointer hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
                   onClick={() => setScreen(item.key as Screen)}
                 >
                   <CardContent className="p-4 flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
+                    <div className="p-2.5 rounded-xl bg-primary/10 shrink-0">
                       <item.icon className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium text-foreground text-sm">{item.label}</p>
-                      <p className="text-xs text-muted-foreground">{item.desc}</p>
+                      <p className="font-semibold text-foreground text-sm">{item.label}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
-            <div className="mt-8">
-              <MedicineTable medicines={medicines} title="Inventory Overview" />
-            </div>
+            <MedicineTable medicines={medicines} title="📋 Inventory Overview" />
           </>
         )}
 
+        {/* === ADD MEDICINE SCREEN === */}
         {screen === "add" && (
           <>
             <BackButton />
-            <Card className="max-w-md">
-              <CardHeader><CardTitle>Add New Medicine</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <div><Label>Medicine Name</Label><Input value={addName} onChange={(e) => setAddName(e.target.value)} placeholder="e.g. Aspirin 100mg" /></div>
-                <div><Label>Quantity</Label><Input type="number" value={addQty} onChange={(e) => setAddQty(e.target.value)} /></div>
-                <div><Label>Price ($)</Label><Input type="number" step="0.01" value={addPrice} onChange={(e) => setAddPrice(e.target.value)} /></div>
-                <div><Label>Expiry Date</Label><Input type="date" value={addExpiry} onChange={(e) => setAddExpiry(e.target.value)} /></div>
-                <Button onClick={handleAdd} className="w-full">Add Medicine</Button>
+            <Card className="max-w-lg shadow-md">
+              <CardHeader>
+                <CardTitle>Add New Medicine</CardTitle>
+                <CardDescription>Fill in the details to add a medicine to inventory</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div><Label>Medicine Name</Label><Input value={addName} onChange={(e) => setAddName(e.target.value)} placeholder="e.g. Aspirin 100mg" className="mt-1" /></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>Quantity</Label><Input type="number" value={addQty} onChange={(e) => setAddQty(e.target.value)} className="mt-1" /></div>
+                  <div><Label>Price ($)</Label><Input type="number" step="0.01" value={addPrice} onChange={(e) => setAddPrice(e.target.value)} className="mt-1" /></div>
+                </div>
+                <div><Label>Expiry Date</Label><Input type="date" value={addExpiry} onChange={(e) => setAddExpiry(e.target.value)} className="mt-1" /></div>
+                <Button onClick={handleAdd} className="w-full" size="lg">
+                  <Plus className="w-4 h-4 mr-2" /> Add Medicine
+                </Button>
               </CardContent>
             </Card>
           </>
         )}
 
+        {/* === VIEW ALL === */}
         {screen === "viewAll" && (
-          <>
-            <BackButton />
-            <MedicineTable medicines={medicines} title="All Medicines" />
-          </>
+          <><BackButton /><MedicineTable medicines={medicines} title="📋 All Medicines" /></>
         )}
 
+        {/* === UPDATE QUANTITY === */}
         {screen === "update" && (
           <>
             <BackButton />
-            <Card className="max-w-md">
-              <CardHeader><CardTitle>Update Quantity</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <div><Label>Medicine ID</Label><Input type="number" value={updateId} onChange={(e) => setUpdateId(e.target.value)} /></div>
-                <div><Label>New Quantity</Label><Input type="number" value={updateQtyVal} onChange={(e) => setUpdateQtyVal(e.target.value)} /></div>
-                <Button onClick={handleUpdate} className="w-full">Update</Button>
+            <Card className="max-w-lg shadow-md">
+              <CardHeader>
+                <CardTitle>Update Quantity</CardTitle>
+                <CardDescription>Enter the medicine ID and new stock quantity</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>Medicine ID</Label><Input type="number" value={updateId} onChange={(e) => setUpdateId(e.target.value)} className="mt-1" /></div>
+                  <div><Label>New Quantity</Label><Input type="number" value={updateQtyVal} onChange={(e) => setUpdateQtyVal(e.target.value)} className="mt-1" /></div>
+                </div>
+                <Button onClick={handleUpdate} className="w-full" size="lg">
+                  <RefreshCw className="w-4 h-4 mr-2" /> Update
+                </Button>
               </CardContent>
             </Card>
           </>
         )}
 
+        {/* === DELETE MEDICINE === */}
         {screen === "delete" && (
           <>
             <BackButton />
-            <Card className="max-w-md">
-              <CardHeader><CardTitle>Delete Medicine</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <div><Label>Medicine ID</Label><Input type="number" value={deleteId} onChange={(e) => setDeleteId(e.target.value)} /></div>
-                <Button variant="destructive" onClick={handleDelete} className="w-full">Delete</Button>
+            <Card className="max-w-lg shadow-md">
+              <CardHeader>
+                <CardTitle>Delete Medicine</CardTitle>
+                <CardDescription>Enter the ID of the medicine to remove</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div><Label>Medicine ID</Label><Input type="number" value={deleteId} onChange={(e) => setDeleteId(e.target.value)} className="mt-1" /></div>
+                <Button variant="destructive" onClick={handleDelete} className="w-full" size="lg">
+                  <Trash2 className="w-4 h-4 mr-2" /> Delete
+                </Button>
               </CardContent>
             </Card>
           </>
         )}
 
+        {/* === SEARCH === */}
         {screen === "search" && (
           <>
             <BackButton />
-            <Card className="max-w-md mb-4">
-              <CardHeader><CardTitle>Search Medicine</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <div><Label>Medicine Name</Label><Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="e.g. Para" /></div>
-                <Button onClick={handleSearch} className="w-full">Search</Button>
+            <Card className="max-w-lg mb-6 shadow-md">
+              <CardHeader>
+                <CardTitle>Search Medicine</CardTitle>
+                <CardDescription>Search by medicine name</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div><Label>Medicine Name</Label><Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="e.g. Para" className="mt-1" /></div>
+                <Button onClick={handleSearch} className="w-full" size="lg">
+                  <Search className="w-4 h-4 mr-2" /> Search
+                </Button>
               </CardContent>
             </Card>
-            {searchResults.length > 0 && <MedicineTable medicines={searchResults} title="Search Results" />}
+            {searchResults.length > 0 && <MedicineTable medicines={searchResults} title="🔍 Search Results" />}
           </>
         )}
 
+        {/* === EXPIRY TRACKING === */}
         {screen === "expiring" && (
-          <>
-            <BackButton />
-            <MedicineTable medicines={getExpiringWithin30Days()} title="Medicines Expiring Within 30 Days" />
-          </>
+          <><BackButton /><MedicineTable medicines={getExpiringWithin30Days()} title="⏰ Medicines Expiring Within 30 Days" /></>
         )}
 
+        {/* === LOW STOCK === */}
         {screen === "lowStock" && (
-          <>
-            <BackButton />
-            <MedicineTable medicines={getLowStock()} title="Low Stock Medicines (Qty < 10)" />
-          </>
+          <><BackButton /><MedicineTable medicines={getLowStock()} title="⚠️ Low Stock Medicines (Qty &lt; 10)" /></>
         )}
 
+        {/* === BILLING MODULE (NEW) === */}
         {screen === "billing" && (
           <>
             <BackButton />
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader><CardTitle>Sell Medicine</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
-                  <div><Label>Medicine ID</Label><Input type="number" value={billId} onChange={(e) => setBillId(e.target.value)} /></div>
-                  <div><Label>Quantity</Label><Input type="number" value={billQty} onChange={(e) => setBillQty(e.target.value)} /></div>
-                  <Button onClick={handleBill} className="w-full">Process Sale</Button>
-                </CardContent>
-              </Card>
-              <MedicineTable medicines={medicines} title="Available Stock" compact />
-            </div>
+            <h2 className="text-lg font-bold text-foreground mb-4">🧾 Bill Generation</h2>
+            <BillingModule />
           </>
         )}
       </main>
