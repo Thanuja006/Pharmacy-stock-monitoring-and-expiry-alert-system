@@ -51,16 +51,6 @@ const Index = () => {
     return <LoginScreen onLogin={() => setIsLoggedIn(true)} />;
   }
 
-  const [addName, setAddName] = useState("");
-  const [addQty, setAddQty] = useState("");
-  const [addPrice, setAddPrice] = useState("");
-  const [addExpiry, setAddExpiry] = useState("");
-
-  const [updateId, setUpdateId] = useState("");
-  const [updateQtyVal, setUpdateQtyVal] = useState("");
-  const [deleteId, setDeleteId] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Medicine[]>([]);
 
   const goMenu = () => setScreen("menu");
 
