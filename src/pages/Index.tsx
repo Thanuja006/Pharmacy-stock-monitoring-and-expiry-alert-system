@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import {
-  Plus, Eye, RefreshCw, Trash2, Search, Clock, AlertCircle, ShoppingCart, ArrowLeft,
+  Plus, Eye, RefreshCw, Trash2, Search, Clock, AlertCircle, ShoppingCart, ArrowLeft, LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import AlertsPanel from "@/components/AlertsPanel";
 import MedicineTable from "@/components/MedicineTable";
 import BillingModule from "@/components/BillingModule";
+import LoginScreen from "@/components/LoginScreen";
 import { useMedicines } from "@/hooks/use-medicines";
 import {
   addMedicine, updateQuantity, deleteMedicine, searchByName,
@@ -32,6 +33,12 @@ const menuItems = [
 const Index = () => {
   const { medicines } = useMedicines();
   const [screen, setScreen] = useState<Screen>("menu");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // If not logged in, show login screen
+  if (!isLoggedIn) {
+    return <LoginScreen onLogin={() => setIsLoggedIn(true)} />;
+  }
 
   const [addName, setAddName] = useState("");
   const [addQty, setAddQty] = useState("");
