@@ -35,6 +35,17 @@ const Index = () => {
   const [screen, setScreen] = useState<Screen>("menu");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  const [addName, setAddName] = useState("");
+  const [addQty, setAddQty] = useState("");
+  const [addPrice, setAddPrice] = useState("");
+  const [addExpiry, setAddExpiry] = useState("");
+
+  const [updateId, setUpdateId] = useState("");
+  const [updateQtyVal, setUpdateQtyVal] = useState("");
+  const [deleteId, setDeleteId] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Medicine[]>([]);
+
   // If not logged in, show login screen
   if (!isLoggedIn) {
     return <LoginScreen onLogin={() => setIsLoggedIn(true)} />;
