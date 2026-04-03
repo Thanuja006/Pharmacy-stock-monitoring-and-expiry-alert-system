@@ -105,9 +105,14 @@ const Index = () => {
             <h1 className="text-xl font-bold text-foreground tracking-tight">💊 Pharmacy Inventory System</h1>
             <p className="text-xs text-muted-foreground mt-0.5">Medicine Inventory &amp; Expiry Tracking</p>
           </div>
-          <div className="text-right hidden md:block">
-            <p className="text-xs text-muted-foreground">{new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
-            <p className="text-[10px] text-muted-foreground/60 mt-0.5">Student Prototype Project</p>
+          <div className="flex items-center gap-4">
+            <div className="text-right hidden md:block">
+              <p className="text-xs text-muted-foreground">{new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
+              <p className="text-[10px] text-muted-foreground/60 mt-0.5">Student Prototype Project</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setIsLoggedIn(false)}>
+              <LogOut className="w-4 h-4 mr-1" /> Logout
+            </Button>
           </div>
         </div>
       </header>
