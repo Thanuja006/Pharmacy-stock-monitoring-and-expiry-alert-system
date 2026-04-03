@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import {
-  Plus, Eye, RefreshCw, Trash2, Search, Clock, AlertCircle, ShoppingCart, ArrowLeft,
+  Plus, Eye, RefreshCw, Trash2, Search, Clock, AlertCircle, ShoppingCart, ArrowLeft, LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import AlertsPanel from "@/components/AlertsPanel";
 import MedicineTable from "@/components/MedicineTable";
 import BillingModule from "@/components/BillingModule";
+import LoginScreen from "@/components/LoginScreen";
 import { useMedicines } from "@/hooks/use-medicines";
 import {
   addMedicine, updateQuantity, deleteMedicine, searchByName,
@@ -32,6 +33,7 @@ const menuItems = [
 const Index = () => {
   const { medicines } = useMedicines();
   const [screen, setScreen] = useState<Screen>("menu");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const [addName, setAddName] = useState("");
   const [addQty, setAddQty] = useState("");
@@ -43,6 +45,12 @@ const Index = () => {
   const [deleteId, setDeleteId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Medicine[]>([]);
+
+  // If not logged in, show login screen
+  if (!isLoggedIn) {
+    return <LoginScreen onLogin={() => setIsLoggedIn(true)} />;
+  }
+
 
   const goMenu = () => setScreen("menu");
 
@@ -87,9 +95,14 @@ const Index = () => {
             <h1 className="text-xl font-bold text-foreground tracking-tight">💊 Pharmacy Inventory System</h1>
             <p className="text-xs text-muted-foreground mt-0.5">Medicine Inventory &amp; Expiry Tracking</p>
           </div>
-          <div className="text-right hidden md:block">
-            <p className="text-xs text-muted-foreground">{new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
-            <p className="text-[10px] text-muted-foreground/60 mt-0.5">Student Prototype Project</p>
+          <div className="flex items-center gap-4">
+            <div className="text-right hidden md:block">
+              <p className="text-xs text-muted-foreground">{new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
+              <p className="text-[10px] text-muted-foreground/60 mt-0.5">Student Prototype Project</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setIsLoggedIn(false)}>
+              <LogOut className="w-4 h-4 mr-1" /> Logout
+            </Button>
           </div>
         </div>
       </header>
